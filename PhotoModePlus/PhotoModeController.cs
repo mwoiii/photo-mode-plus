@@ -189,6 +189,10 @@ namespace PhotoModePlus {
         }
 
         private void Update() {
+            if (Options.disableCameraWithConsole.Value && ConsoleWindow.instance?.gameObject) {
+                return;
+            }
+
             UserProfile userProfile = cameraRigController.localUserViewer.userProfile;
             Player inputPlayer = cameraRigController.localUserViewer.inputPlayer;
             if (inputPlayer.GetButton(25)) {
