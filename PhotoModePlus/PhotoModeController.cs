@@ -32,21 +32,46 @@ namespace PhotoModePlus {
             }
         }
 
-        private static float cameraSpeed = 10f;
-
-        private static float cameraSprintMultiplier = 5f;
-
-        private static float cameraSlowMultiplier = 0.3f;
+        private float cameraSpeed;
 
         public CameraRigController cameraRigController;
 
+        private InteractionDriver interactionDriver;
+
         private PhotoModeCameraState cameraState;
 
-        private float currentTimescale;
+        private Player inputPlayer;
 
-        private float prevTimescale;
+        private UserProfile userProfile;
+
+        private float? prevTimescale;
+
+        private bool isSteppingTime;
+
+        private float stepTimeHoldDuration;
 
         private List<PingIndicator> pingIndicators;
+
+        private event EmptyDelegate OnExit;
+
+        private CursorOpener cursorOpener;
+
+        private bool _cursorActive;
+
+        private bool cursorActive {
+            get {
+                return _cursorActive;
+            }
+            set {
+                if (!cursorOpener) {
+                    gameObject.AddComponent<MPEventSystemProvider>().fallBackToMainEventSystem = true;
+                    gameObject.AddComponent<MPEventSystemLocator>();
+                    cursorOpener = gameObject.AddComponent<CursorOpener>();
+                }
+                cursorOpener.enabled = value;
+                _cursorActive = value;
+            }
+        }
 
         private Camera camera => cameraRigController.sceneCam;
 
@@ -54,19 +79,53 @@ namespace PhotoModePlus {
 
         private bool gamepad => currentInputSource == MPEventSystem.InputSource.Gamepad;
 
-        private event EmptyDelegate OnExit;
-
         internal void EnterPhotoMode(CameraRigController cameraRigController) {
+            cameraSpeed = Options.defaultSpeed.Value;
+
             if (!cameraRigController) {
                 Log.Error("Camera rig controller is null! Cancelling photo mode...");
                 Destroy(gameObject);
+                return;
             }
 
-            this.cameraRigController = cameraRigController;
-            if (this.cameraRigController) {
-                this.cameraRigController.SetOverrideCam(this, 0f);
-                this.cameraRigController.enableFading = false;
+            userProfile = cameraRigController.localUserViewer.userProfile;
+
+            SetupCameraState(cameraRigController);
+
+            SetInteractionDriverActive(false); // doing this because inspection can cause problems. avoiding it outright
+
+            HoldVisuals();
+        }
+
+        private void SetInteractionDriverActive(bool active) {
+            if (!interactionDriver && !(cameraRigController.targetBody && cameraRigController.targetBody.TryGetComponent(out interactionDriver))) {
+                return;
             }
+
+            interactionDriver.enabled = active;
+            if (!active) {
+                interactionDriver.SetCurrentInteractable(null);
+            }
+        }
+
+        private void HoldVisuals() {
+            cameraRigController.hud.mainContainer.GetComponent<Canvas>().enabled = false;
+            OnExit += () => {
+                cameraRigController.hud.mainContainer.GetComponent<Canvas>().enabled = true;
+            };
+
+            if (Options.disableIndicators.Value) {
+                SetIndicatorsVisible(false);
+                OnExit += () => {
+                    SetIndicatorsVisible(true);
+                };
+            }
+        }
+
+        private void SetupCameraState(CameraRigController cameraRigController) {
+            this.cameraRigController = cameraRigController;
+            this.cameraRigController.SetOverrideCam(this, 0f);
+            this.cameraRigController.enableFading = false;
 
             cameraState = default;
             cameraState.position = camera.transform.position;
@@ -78,53 +137,61 @@ namespace PhotoModePlus {
                 cameraState.pitch -= 360f;
             }
 
-            // pointless now but not pointless for future updates
-            if (SettingsConVars.enableDamageNumbers.value) {
-                SettingsConVars.enableDamageNumbers.SetBool(false);
-                OnExit += () => {
-                    SettingsConVars.enableDamageNumbers.SetBool(true);
-                };
-            }
-
-            if (SettingsConVars.cvExpAndMoneyEffects.value) {
-                SettingsConVars.cvExpAndMoneyEffects.SetBool(false);
-                OnExit += () => {
-                    SettingsConVars.cvExpAndMoneyEffects.SetBool(true);
-                };
-            }
-
-            this.cameraRigController.hud.mainContainer.GetComponent<Canvas>().enabled = false;
-            OnExit += () => {
-                this.cameraRigController.hud.mainContainer.GetComponent<Canvas>().enabled = true;
-            };
-
-            if (Options.disableIndicators.Value) {
-                SetIndicatorsVisible(false);
-                OnExit += () => {
-                    SetIndicatorsVisible(true);
-                };
-            }
-
-            Player inputPlayer = this.cameraRigController.localUserViewer.inputPlayer;
+            inputPlayer = cameraRigController.localUserViewer.inputPlayer;
             inputPlayer.controllers.AddLastActiveControllerChangedDelegate(OnLastActiveControllerChanged);
             OnLastActiveControllerChanged(inputPlayer, inputPlayer.controllers.GetLastActiveController());
             if (PauseStopController.instance) {
                 prevTimescale = PauseStopController.instance._oldTimeScale;
             } else {
-                Log.Warning("PauseStopController instance is null! Recording previous timescale as 1.");
                 prevTimescale = 1f;
             }
         }
 
-        private void OnDisable() {
-            if (cameraRigController) {
-                Player inputPlayer = cameraRigController.localUserViewer.inputPlayer;
-                inputPlayer.controllers.RemoveLastActiveControllerChangedDelegate(OnLastActiveControllerChanged);
-            }
+        private void ExitPhotoMode() {
+            OnExit?.Invoke();
+
+            SetInteractionDriverActive(true);
+
+            DestroyCameraState();
         }
 
-        private void OnDestroy() {
-            ExitPhotoMode();
+        private void DestroyCameraState() {
+            if (cameraRigController) {
+                cameraRigController.enableFading = true;
+                cameraRigController.SetOverrideCam(null);
+                camera.transform.localPosition = Vector3.zero;
+                camera.transform.localRotation = Quaternion.identity;
+            }
+
+            for (int i = 0; i < PauseScreenController.instancesList.Count; i++) {
+                PauseScreenController.instancesList[i].DestroyPauseScreen(true);
+            }
+
+            if (PauseStopController.instance) {
+                PauseStopController.instance.Pause(false);
+            }
+
+            if (prevTimescale != null) {
+                Time.timeScale = (float)prevTimescale;
+            }
+
+            Destroy(gameObject);
+        }
+
+        private void SetIndicatorsVisible(bool visible) {
+            if (!visible) {
+                DamageNumberManager.instance.ps.Clear(true);
+                cameraRigController.sprintingParticleSystem.Clear(withChildren: true);
+                pingIndicators = new List<PingIndicator>(PingIndicator.instancesList);
+            }
+
+            for (int i = 0; i < pingIndicators.Count; i++) {
+                if (pingIndicators[i]?.gameObject != null) {
+                    pingIndicators[i].gameObject.SetActive(visible);
+                }
+            }
+
+            cameraRigController.hud.combatHealthBarViewer.enabled = visible;
         }
 
         private void OnLastActiveControllerChanged(Player player, Controller controller) {
@@ -143,85 +210,86 @@ namespace PhotoModePlus {
             }
         }
 
-        //private void SetupPhotoModeHUD(HUD hud) {
-        //    // HELLO??????
-        //    GameObject gameObject = hud.gameObject;
-        //    GameObject gameObject2 = new GameObject("PhotoModeHUD", typeof(Canvas));
-        //}
-
-        private void ExitPhotoMode() {
-            OnExit?.Invoke();
-            if (cameraRigController) {
-                cameraRigController.enableFading = true;
-                cameraRigController.SetOverrideCam(null);
-                camera.transform.localPosition = Vector3.zero;
-                camera.transform.localRotation = Quaternion.identity;
-            }
-
-            for (int i = 0; i < PauseScreenController.instancesList.Count; i++) {
-                PauseScreenController.instancesList[i].DestroyPauseScreen(shouldResumeOnDisable: true);
-            }
-
-            Time.timeScale = prevTimescale;
-            Destroy(gameObject);
-        }
-
-        private void SetIndicatorsVisible(bool visible) {
-            //if (Indicator.IndicatorManager.runningIndicators is List<Indicator> list) {
-            //    for (int i = 0; i < Indicator.IndicatorManager.runningIndicators.Count; i++) {
-            //        list[i].SetVisualizerInstantiated(visible);
-            //    }
-            //}
-
-            if (!visible) {
-                DamageNumberManager.instance.ps.Clear(true);
-                cameraRigController.sprintingParticleSystem.Clear(withChildren: true);
-                pingIndicators = new List<PingIndicator>(PingIndicator.instancesList);
-            }
-
-            for (int i = 0; i < pingIndicators.Count; i++) {
-                if (pingIndicators[i]?.gameObject != null) {
-                    pingIndicators[i].gameObject.SetActive(visible);
-                }
-            }
-
-            cameraRigController.hud.combatHealthBarViewer.enabled = visible;
-        }
-
         private void Update() {
-            if (Options.disableCameraWithConsole.Value && ConsoleWindow.instance?.gameObject) {
-                return;
+            if (isSteppingTime) {
+                Time.timeScale = 1f;
+            } else {
+                Time.timeScale = 0f;
             }
 
-            UserProfile userProfile = cameraRigController.localUserViewer.userProfile;
-            Player inputPlayer = cameraRigController.localUserViewer.inputPlayer;
-            if (inputPlayer.GetButton(25)) {
+            if (inputPlayer.GetButton(25)) { // magic number idk. lots of magic numbers hereon from decomp
                 ExitPhotoMode();
                 return;
             }
 
-            Time.timeScale = currentTimescale;
+            HandleUtilityInputs();
 
+            if (cursorActive || (Options.disableCameraWithConsole.Value && ConsoleWindow.instance)) {
+                return;
+            }
+
+            HandleMovementInputs();
+        }
+
+        private void FixedUpdate() {
+            if (isSteppingTime) {
+                isSteppingTime = false;
+            }
+        }
+
+        private void HandleUtilityInputs() {
+            const float speedIncrement = 0.5f;
+            const float minSpeed = 0f;
+            const float maxSpeed = 200f;
+            const float stepHoldThreshold = 0.6f;
+
+            if (Input.GetKey(Options.increaseSpeedKey.Value.MainKey)) {
+                cameraSpeed = Mathf.Clamp(cameraSpeed + speedIncrement, minSpeed, maxSpeed);
+            }
+
+            if (Input.GetKey(Options.decreaseSpeedKey.Value.MainKey)) {
+                cameraSpeed = Mathf.Clamp(cameraSpeed - speedIncrement, minSpeed, maxSpeed);
+            }
+
+            if (Input.GetKeyDown(Options.stepTime.Value.MainKey)) {
+                isSteppingTime = true;
+            }
+
+            if (Input.GetKeyDown(Options.cursorToggleKey.Value.MainKey)) {
+                cursorActive = !cursorActive;
+            }
+
+            if (Input.GetKey(Options.stepTime.Value.MainKey)) {
+                stepTimeHoldDuration += Time.unscaledDeltaTime;
+                if (stepTimeHoldDuration > stepHoldThreshold) {
+                    isSteppingTime = true;
+                }
+            } else {
+                stepTimeHoldDuration = 0f;
+            }
+        }
+
+        private void HandleMovementInputs() {
             float mouseLookSensitivity = userProfile.mouseLookSensitivity;
             float mouseLookScaleX = userProfile.mouseLookScaleX;
             float mouseLookScaleY = userProfile.mouseLookScaleY;
             float axis = inputPlayer.GetAxis(23);
             float axis2 = inputPlayer.GetAxis(24);
-            float num = 1f;
+            float activeGamepadMult = 1f;
 
             if (gamepad) {
-                num = 10f;
+                activeGamepadMult = 10f;
             }
 
-            if ((gamepad && inputPlayer.GetButton(9)) || Input.GetMouseButton(1)) {
-                cameraState.fov = Mathf.Clamp(camera.fieldOfView + mouseLookSensitivity * Time.unscaledDeltaTime * axis2 * num, 4f, 120f);
-            }
+            //if ((gamepad && inputPlayer.GetButton(9)) || Input.GetMouseButton(1)) {
+            //    cameraState.fov = Mathf.Clamp(camera.fieldOfView + mouseLookSensitivity * Time.unscaledDeltaTime * axis2 * activeGamepadMult, 4f, 120f);
+            //}
 
             if ((gamepad && inputPlayer.GetButton(10)) || Input.GetMouseButton(2)) {
-                cameraState.roll += (0f - mouseLookScaleX) * mouseLookSensitivity * Time.unscaledDeltaTime * axis * num;
+                cameraState.roll += (0f - mouseLookScaleX) * mouseLookSensitivity * Time.unscaledDeltaTime * axis * activeGamepadMult * 10f;
             } else {
-                float xMovement = mouseLookScaleX * mouseLookSensitivity * Time.unscaledDeltaTime * axis * num;
-                float yMovement = mouseLookScaleY * mouseLookSensitivity * Time.unscaledDeltaTime * axis2 * num;
+                float xMovement = mouseLookScaleX * mouseLookSensitivity * Time.unscaledDeltaTime * axis * activeGamepadMult;
+                float yMovement = mouseLookScaleY * mouseLookSensitivity * Time.unscaledDeltaTime * axis2 * activeGamepadMult;
                 ConditionalNegate(ref xMovement, userProfile.mouseLookInvertX);
                 ConditionalNegate(ref yMovement, userProfile.mouseLookInvertY);
                 float f = cameraState.roll * (MathF.PI / 180f);
@@ -230,33 +298,44 @@ namespace PhotoModePlus {
                 cameraState.pitch = Mathf.Clamp(cameraState.pitch, -90f, 90f);
             }
 
-            Vector3 vector = new Vector3(inputPlayer.GetAxis(0) * num, 0f, inputPlayer.GetAxis(1) * num);
-            if ((gamepad && inputPlayer.GetButton(7)) || Input.GetKey(KeyCode.Q)) {
-                vector.y -= 1f;
+            Vector3 movementInput = new Vector3(inputPlayer.GetAxis(0) * activeGamepadMult, 0f, inputPlayer.GetAxis(1) * activeGamepadMult);
+            if ((gamepad && inputPlayer.GetButton(7)) || Input.GetKey(Options.cameraDownKey.Value.MainKey)) {
+                movementInput.y -= 1f;
             }
 
-            if ((gamepad && inputPlayer.GetButton(8)) || Input.GetKey(KeyCode.E)) {
-                vector.y += 1f;
+            if ((gamepad && inputPlayer.GetButton(8)) || Input.GetKey(Options.cameraUpKey.Value.MainKey)) {
+                movementInput.y += 1f;
             }
 
-            vector.Normalize();
+            movementInput.Normalize();
 
-            if (inputPlayer.GetButton("Sprint")) {
-                vector *= cameraSprintMultiplier;
+            if (Input.GetKey(Options.cameraFastKey.Value.MainKey)) {
+                movementInput *= Options.fastMult.Value;
             }
 
-            if (Input.GetKey(KeyCode.LeftControl)) {
-                vector *= cameraSlowMultiplier;
+            if (Input.GetKey(Options.cameraSlowKey.Value.MainKey)) {
+                movementInput *= Options.slowMult.Value;
             }
 
-            cameraState.position += cameraState.Rotation * vector * Time.unscaledDeltaTime * cameraSpeed;
+            cameraState.position += cameraState.Rotation * movementInput * Time.unscaledDeltaTime * cameraSpeed;
             camera.transform.position = cameraState.position;
             Quaternion quaternion = cameraState.Rotation;
             if ((double)Mathf.Abs(quaternion.eulerAngles.z) < 2.0) {
                 quaternion = quaternion.WithEulerAngles(null, null, 0f);
             }
             camera.transform.rotation = quaternion;
-            camera.fieldOfView = cameraState.fov;
+            //camera.fieldOfView = cameraState.fov;
+        }
+
+        private void OnDisable() {
+            if (cameraRigController) {
+                Player inputPlayer = cameraRigController.localUserViewer.inputPlayer;
+                inputPlayer.controllers.RemoveLastActiveControllerChangedDelegate(OnLastActiveControllerChanged);
+            }
+        }
+
+        private void OnDestroy() {
+            ExitPhotoMode();
         }
 
         public void GetCameraState(CameraRigController cameraRigController, ref CameraState cameraState) {

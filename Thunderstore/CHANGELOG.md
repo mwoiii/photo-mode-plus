@@ -1,3 +1,20 @@
+### 1.1.0
+
+- Added configurable keybinds for the following actions:
+  - Move up
+  - Move down
+  - Move faster
+  - Move slower
+  - Step forward
+  - Increase speed
+  - Decrease speed
+  - Toggle cursor
+<br><br/>
+  
+- Camera default/fast/slow speeds are now configurable
+
+- Fixed a bug where time would stay frozen if you entered Photo Mode next to an interactable and held inspect while leaving
+
 ## 1.0.1
 
 - Added an option to prevent camera movements while the dev console is active. Enabled by default

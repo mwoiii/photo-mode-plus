@@ -12,7 +12,7 @@ namespace PhotoModePlus {
         public const string PluginGUID = PluginAuthor + "." + PluginName;
         public const string PluginAuthor = "mwmw";
         public const string PluginName = "PhotoModePlus";
-        public const string PluginVersion = "1.0.1";
+        public const string PluginVersion = "1.1.0";
 
         public static ConfigFile config;
 
@@ -22,20 +22,22 @@ namespace PhotoModePlus {
             Assets.Init();
             Options.Init();
 
-            On.RoR2.UI.PauseScreenController.Awake += (On.RoR2.UI.PauseScreenController.orig_Awake orig, PauseScreenController self) => {
-                orig(self);
-                SetupPhotoModeButton(self);
-            };
+            On.RoR2.UI.PauseScreenController.Awake += SetupPhotoModeButton;
         }
 
-        private void SetupPhotoModeButton(PauseScreenController pauseScreenController) {
-            GameObject button = pauseScreenController.GetComponentInChildren<ButtonSkinController>().gameObject;
+        private void SetupPhotoModeButton(On.RoR2.UI.PauseScreenController.orig_Awake orig, PauseScreenController self) {
+            orig(self);
+
+            GameObject button = self.GetComponentInChildren<ButtonSkinController>().gameObject;
             GameObject buttonCopy = Instantiate(button, button.transform.parent);
             buttonCopy.name = "GenericMenuButton (Photo Mode)";
-            buttonCopy.SetActive(value: true);
-            ButtonSkinController component = buttonCopy.GetComponent<ButtonSkinController>();
-            component.GetComponent<LanguageTextMeshController>().token = "Photo Mode";
+            buttonCopy.SetActive(true);
+
+            ButtonSkinController buttonSkinController = buttonCopy.GetComponent<ButtonSkinController>();
+            buttonSkinController.GetComponent<LanguageTextMeshController>().token = "Photo Mode";
+
             HGButton hgButton = buttonCopy.GetComponent<HGButton>();
+            hgButton.defaultFallbackButton = false;
             CameraRigController cameraRigInstance = CameraRigController.instancesList.Count > 0 ? CameraRigController.instancesList[^1] : null;
             hgButton.interactable = cameraRigInstance ? cameraRigInstance.localUserViewer != null : false;
             hgButton.onClick.AddListener(() => {
