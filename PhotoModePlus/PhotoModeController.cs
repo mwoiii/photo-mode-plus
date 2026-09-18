@@ -58,6 +58,8 @@ namespace PhotoModePlus {
 
         private bool _cursorActive;
 
+        private const float speedChangeSpeed = 140f; // this name is Not confusing!!!
+
         private bool cursorActive {
             get {
                 return _cursorActive;
@@ -244,11 +246,11 @@ namespace PhotoModePlus {
             const float stepHoldThreshold = 0.6f;
 
             if (Input.GetKey(Options.increaseSpeedKey.Value.MainKey)) {
-                cameraSpeed = Mathf.Clamp(cameraSpeed + speedIncrement, minSpeed, maxSpeed);
+                cameraSpeed = Mathf.Clamp(cameraSpeed + speedIncrement * Time.unscaledDeltaTime * speedChangeSpeed, minSpeed, maxSpeed);
             }
 
             if (Input.GetKey(Options.decreaseSpeedKey.Value.MainKey)) {
-                cameraSpeed = Mathf.Clamp(cameraSpeed - speedIncrement, minSpeed, maxSpeed);
+                cameraSpeed = Mathf.Clamp(cameraSpeed - speedIncrement * Time.unscaledDeltaTime * speedChangeSpeed, minSpeed, maxSpeed);
             }
 
             if (Input.GetKeyDown(Options.stepTime.Value.MainKey)) {
@@ -270,6 +272,7 @@ namespace PhotoModePlus {
         }
 
         private void HandleMovementInputs() {
+            const float cameraMovementMult = 0.01f;
             float mouseLookSensitivity = userProfile.mouseLookSensitivity;
             float mouseLookScaleX = userProfile.mouseLookScaleX;
             float mouseLookScaleY = userProfile.mouseLookScaleY;
@@ -281,15 +284,17 @@ namespace PhotoModePlus {
                 activeGamepadMult = 10f;
             }
 
+            // wasn't doing anything in the og mod + just causes a fight over fov
             //if ((gamepad && inputPlayer.GetButton(9)) || Input.GetMouseButton(1)) {
             //    cameraState.fov = Mathf.Clamp(camera.fieldOfView + mouseLookSensitivity * Time.unscaledDeltaTime * axis2 * activeGamepadMult, 4f, 120f);
             //}
 
+            // don't multiply rotation values by unscaleddeltatime, as axis values are already dependent on time
             if ((gamepad && inputPlayer.GetButton(10)) || Input.GetMouseButton(2)) {
-                cameraState.roll += (0f - mouseLookScaleX) * mouseLookSensitivity * Time.unscaledDeltaTime * axis * activeGamepadMult * 10f;
+                cameraState.roll += (0f - mouseLookScaleX) * mouseLookSensitivity * axis * activeGamepadMult * cameraMovementMult * 10f;
             } else {
-                float xMovement = mouseLookScaleX * mouseLookSensitivity * Time.unscaledDeltaTime * axis * activeGamepadMult;
-                float yMovement = mouseLookScaleY * mouseLookSensitivity * Time.unscaledDeltaTime * axis2 * activeGamepadMult;
+                float xMovement = mouseLookScaleX * mouseLookSensitivity * axis * activeGamepadMult * cameraMovementMult;
+                float yMovement = mouseLookScaleY * mouseLookSensitivity * axis2 * activeGamepadMult * cameraMovementMult;
                 ConditionalNegate(ref xMovement, userProfile.mouseLookInvertX);
                 ConditionalNegate(ref yMovement, userProfile.mouseLookInvertY);
                 float f = cameraState.roll * (MathF.PI / 180f);

@@ -1,4 +1,8 @@
-### 1.1.0
+## 1.1.1
+
+- Fixed certain controls being dependent on framerate
+
+## 1.1.0
 
 - Added configurable keybinds for the following actions:
   - Move up
