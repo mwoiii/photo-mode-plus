@@ -1,3 +1,7 @@
+## 1.1.2
+
+- DLC4 fix
+
 ## 1.1.1
 
 - Fixed certain controls being dependent on framerate

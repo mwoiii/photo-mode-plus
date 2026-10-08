@@ -52,7 +52,7 @@ namespace PhotoModePlus {
 
         private List<PingIndicator> pingIndicators;
 
-        private event EmptyDelegate OnExit;
+        private event Action OnExit;
 
         private CursorOpener cursorOpener;
 
