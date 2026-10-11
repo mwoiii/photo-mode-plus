@@ -1,3 +1,7 @@
+## 1.1.3
+
+- Fixed the scoreboard post-processing being possible to activate in Photo Mode since DLC4
+
 ## 1.1.2
 
 - DLC4 fix

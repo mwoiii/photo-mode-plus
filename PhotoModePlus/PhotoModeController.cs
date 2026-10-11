@@ -32,6 +32,8 @@ namespace PhotoModePlus {
             }
         }
 
+        public static PhotoModeController instance;
+
         private float cameraSpeed;
 
         public CameraRigController cameraRigController;
@@ -97,6 +99,10 @@ namespace PhotoModePlus {
             SetInteractionDriverActive(false); // doing this because inspection can cause problems. avoiding it outright
 
             HoldVisuals();
+        }
+
+        private void Awake() {
+            instance = this;
         }
 
         private void SetInteractionDriverActive(bool active) {
