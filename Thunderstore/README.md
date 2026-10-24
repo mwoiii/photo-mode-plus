@@ -26,6 +26,10 @@ Tab - Toggle free cursor
 
 Hold MMB + Slide left/right - Roll camera
 
+F + Slide up/down - Adjust FOV
+
+R - Reset FOV
+
 # Contact
 
 Discord: miyowi

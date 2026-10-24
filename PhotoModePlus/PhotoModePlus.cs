@@ -15,7 +15,7 @@ namespace PhotoModePlus {
         public const string PluginGUID = PluginAuthor + "." + PluginName;
         public const string PluginAuthor = "mwmw";
         public const string PluginName = "PhotoModePlus";
-        public const string PluginVersion = "1.1.3";
+        public const string PluginVersion = "1.1.4";
 
         public static ConfigFile config;
 

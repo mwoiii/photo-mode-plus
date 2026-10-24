@@ -60,6 +60,8 @@ namespace PhotoModePlus {
 
         private bool _cursorActive;
 
+        private float defaultFov;
+
         private const float speedChangeSpeed = 140f; // this name is Not confusing!!!
 
         private bool cursorActive {
@@ -138,7 +140,7 @@ namespace PhotoModePlus {
             cameraState = default;
             cameraState.position = camera.transform.position;
             cameraState.Rotation = Quaternion.LookRotation(camera.transform.rotation * Vector3.forward, Vector3.up);
-            cameraState.fov = camera.fieldOfView;
+            cameraState.fov = defaultFov = camera.fieldOfView;
 
             // fix snapping from clamp
             if (cameraState.pitch > 90f) {
@@ -290,13 +292,12 @@ namespace PhotoModePlus {
                 activeGamepadMult = 10f;
             }
 
-            // wasn't doing anything in the og mod + just causes a fight over fov
-            //if ((gamepad && inputPlayer.GetButton(9)) || Input.GetMouseButton(1)) {
-            //    cameraState.fov = Mathf.Clamp(camera.fieldOfView + mouseLookSensitivity * Time.unscaledDeltaTime * axis2 * activeGamepadMult, 4f, 120f);
-            //}
-
             // don't multiply rotation values by unscaleddeltatime, as axis values are already dependent on time
-            if ((gamepad && inputPlayer.GetButton(10)) || Input.GetMouseButton(2)) {
+            if (Input.GetKeyDown(Options.defaultFOVKey.Value.MainKey)) {
+                cameraState.fov = defaultFov;
+            } else if (Input.GetKey(Options.adjustFOVKey.Value.MainKey)) {
+                cameraState.fov = Mathf.Clamp(camera.fieldOfView + mouseLookSensitivity * axis2 * activeGamepadMult, 4f, 120f);
+            } else if ((gamepad && inputPlayer.GetButton(10)) || Input.GetMouseButton(2)) {
                 cameraState.roll += (0f - mouseLookScaleX) * mouseLookSensitivity * axis * activeGamepadMult * cameraMovementMult * 10f;
             } else {
                 float xMovement = mouseLookScaleX * mouseLookSensitivity * axis * activeGamepadMult * cameraMovementMult;
@@ -335,7 +336,11 @@ namespace PhotoModePlus {
                 quaternion = quaternion.WithEulerAngles(null, null, 0f);
             }
             camera.transform.rotation = quaternion;
-            //camera.fieldOfView = cameraState.fov;
+
+
+            // todo make this behave when pressing physics update button
+            // (by todo I actually mean. I currently no have no plans to do it. but just putting it out there that I am aware)
+            camera.fieldOfView = cameraState.fov;
         }
 
         private void OnDisable() {

@@ -27,6 +27,8 @@ namespace PhotoModePlus {
         public static ConfigEntry<KeyboardShortcut> increaseSpeedKey;
         public static ConfigEntry<KeyboardShortcut> decreaseSpeedKey;
         public static ConfigEntry<KeyboardShortcut> cursorToggleKey;
+        public static ConfigEntry<KeyboardShortcut> adjustFOVKey;
+        public static ConfigEntry<KeyboardShortcut> defaultFOVKey;
 
         public static ConfigEntry<float> defaultSpeed;
         public static ConfigEntry<float> fastMult;
@@ -46,6 +48,8 @@ namespace PhotoModePlus {
             increaseSpeedKey = PhotoModePlus.config.Bind("Keybinds", "Increase Default Speed Key", new KeyboardShortcut(KeyCode.UpArrow), "Key to press to increase the default speed of the current camera instance.");
             decreaseSpeedKey = PhotoModePlus.config.Bind("Keybinds", "Decrease Default Speed Key", new KeyboardShortcut(KeyCode.DownArrow), "Key to press to decrease the default speed of the current camera instance.");
             cursorToggleKey = PhotoModePlus.config.Bind("Keybinds", "Cursor Opener Toggle Key", new KeyboardShortcut(KeyCode.Tab), "Key to press to free and unfree the cursor while in Photo Mode. Freeing the cursor freezes movement controls.");
+            adjustFOVKey = PhotoModePlus.config.Bind("Keybinds", "Adjust FOV Key", new KeyboardShortcut(KeyCode.F), "Key to hold to adjust the FOV while in Photo Mode.");
+            defaultFOVKey = PhotoModePlus.config.Bind("Keybinds", "Reset FOV Key", new KeyboardShortcut(KeyCode.R), "Key to press to snap the FOV back to the default while in Photo Mode.");
 
             defaultSpeed = PhotoModePlus.config.Bind("Movement", "Default Camera Speed", 10f, "The speed at which the camera will move upon entering Photo Mode, without holding any keybinds.");
             fastMult = PhotoModePlus.config.Bind("Movement", "Fast Mult", 5f, "The value which the default camera speed is multiplied by when holding down the Fast Camera keybind.");
@@ -70,6 +74,8 @@ namespace PhotoModePlus {
             ModSettingsManager.AddOption(new KeyBindOption(increaseSpeedKey, new KeyBindConfig()));
             ModSettingsManager.AddOption(new KeyBindOption(decreaseSpeedKey, new KeyBindConfig()));
             ModSettingsManager.AddOption(new KeyBindOption(cursorToggleKey, new KeyBindConfig()));
+            ModSettingsManager.AddOption(new KeyBindOption(adjustFOVKey, new KeyBindConfig()));
+            ModSettingsManager.AddOption(new KeyBindOption(defaultFOVKey, new KeyBindConfig()));
 
             ModSettingsManager.AddOption(new StepSliderOption(defaultSpeed, new StepSliderConfig() { min = 0.1f, max = 100f, increment = 0.1f }));
             ModSettingsManager.AddOption(new StepSliderOption(fastMult, new StepSliderConfig() { min = 1f, max = 100f, increment = 0.1f }));

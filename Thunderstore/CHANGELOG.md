@@ -1,3 +1,13 @@
+## 1.1.4
+
+- Restored configurable keybind for FOV adjustment
+  - Hold the configured key and move the mouse up/down to increase/decrease FOV
+  - Note: currently does not behave nicely when using the physics step key. Prepare your eyes
+<br><br/>
+
+- Added a keybind to set the FOV back to default
+
+
 ## 1.1.3
 
 - Fixed the scoreboard post-processing being possible to activate in Photo Mode since DLC4

@@ -1,6 +1,6 @@
 ﻿{
 	"name": "PhotoModePlus",
-	"version_number": "1.1.3",
+	"version_number": "1.1.4",
 	"website_url": "https://github.com/mwoiii/photo-mode-plus",
 	"description": "An improved recompile of PhotoMode: a configurable and lightweight freecam tool.",
 	"dependencies": [
